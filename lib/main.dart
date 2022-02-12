@@ -1,4 +1,10 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_face_detection_demo/face_detector_painter.dart';
+import 'package:google_ml_vision/google_ml_vision.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,109 +13,161 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Face Detection',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Flutter Face Detection'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
+  const MyHomePage({
+    Key? key,
+    required this.title,
+  }) : super(key: key);
+
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  var pathPhoto = '';
+  var isLoading = false;
+  var widthImage = 0.0;
+  var heightImage = 0.0;
+  var faces = <Face>[];
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          /// Ambil gambar dari galeri
+          final imagePicker = await ImagePicker().pickImage(source: ImageSource.gallery);
+
+          /// Pastikan bahwa gambarnya valid
+          if (imagePicker != null) {
+            /// Tampilkan loading
+            setState(() => isLoading = true);
+
+            /// Ambil path image-nya
+            pathPhoto = imagePicker.path;
+
+            /// Ambil nilai width dan height dari gambar
+            final imageBytes = await File(pathPhoto).readAsBytes();
+            final image = await decodeImageFromList(imageBytes);
+            widthImage = image.width.toDouble();
+            heightImage = image.height.toDouble();
+
+            /// Buat objek GoogleVisionImage dengan datanya adalah gambar yang kita ambil dari galeri
+            final googleVisionImage = GoogleVisionImage.fromFilePath(pathPhoto);
+
+            /// Buat objek FaceDetector
+            final faceDetector = GoogleVision.instance.faceDetector();
+
+            /// Jalankan proses untuk deteksi wajahnya
+            faces.clear();
+            faces = await faceDetector.processImage(googleVisionImage);
+
+            /// Tampilkan pesan apakah wajahnya terdeteksi atau tidak
+            if (faces.isEmpty) {
+              showDialogMessage('Wajah tidak terdeteksi');
+            } else {
+              showDialogMessage('Wajah terdeteksi');
+            }
+
+            /// Sembunyikan loading
+            setState(() => isLoading = false);
+          }
+        },
+      ),
+      body: buildWidgetBody(),
+    );
+  }
+
+  Widget buildWidgetBody() {
+    /// Tampilkan loading ditengah-tengah layar
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator.adaptive(),
+      );
+    }
+
+    /// Tampilkan info bahwa tidak ada foto yang diambil
+    if (pathPhoto.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Silakan ambil foto dulu ya\n'
+                'dengan cara tekan tombol tambah di bagian kanan bawah',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    /// Tampilkan foto yang kita ambil dari kamera atau galeri
+    return Center(
+      child: CustomPaint(
+        foregroundPainter: FaceDetectorPainter(
+          Size(widthImage, heightImage),
+          faces,
+          isReflection: true,
+        ),
+        child: Image.file(
+          File(
+            pathPhoto,
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  void showDialogMessage(String message) {
+    if (Platform.isIOS) {
+      showCupertinoDialog(
+        context: context,
+        builder: (context) {
+          return CupertinoAlertDialog(
+            title: const Text('Info'),
+            content: Text(message),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('Ok'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Info'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }
