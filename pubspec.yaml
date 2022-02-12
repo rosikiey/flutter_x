@@ -30,10 +30,17 @@ dependencies:
   flutter:
     sdk: flutter
 
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
+
+  # Flutter plugin for Google ML Kit on-device vision apis. It includes barcode scanning,
+  # image labeling, text recognition and face detection.
+  google_ml_vision: ^0.0.7
+
+  # Flutter plugin for selecting images from the Android and iOS image library, and
+  # taking new pictures with the camera.
+  image_picker: ^0.8.4+8
 
 dev_dependencies:
   flutter_test:
