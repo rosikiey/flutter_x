@@ -54,7 +54,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: const Icon(Icons.add),
         onPressed: () async {
           /// Ambil gambar dari galeri
-          final imagePicker = await ImagePicker().pickImage(source: ImageSource.gallery);
+          final imagePicker = await ImagePicker().pickImage(source: ImageSource.camera);
 
           /// Pastikan bahwa gambarnya valid
           if (imagePicker != null) {
